@@ -1,8 +1,5 @@
 .data
 
-#AUN FALTA LA NOTIFICACION DEL BAJO STOCK. PERO YA SE RESTA CORRECTAMENTE, SE VALIDAN MONEDAS:D 
-#Y SE SUMA EL CAMBIO CON EL DINERO INGRESADO (NUEVO) CUANDO EL USUARIO DECIDE SEGUIR CON LA COMPRA.
-
 titulo:         .asciiz "\n******** Maquina expendedora de bebidas ******** \n\n"
 bebida:		.asciiz "\n\nIngrese el codigo de la bebida o '0' para cancelar: "
 sel:            .asciiz "Seleccionaste  "
@@ -16,7 +13,7 @@ dinero1:	.asciiz "\nIngrese billetes o '0' para continuar: "
 dinero2:	.asciiz "\nIngrese monedas o '0' para continuar: "
 nuevacompra:	.asciiz "\n\nSi desea seguir comprando digite '1', para salir digite '0':"
 nuevacompra2:	.asciiz "\n****** Nueeeeeva Compraaaaa ****** \n\n"
-nostock:        .asciiz "Lo sentimos, la bebida esta agotada"
+nostock:        .asciiz "\nLo sentimos, bajo stock de "
 salto_linea: 	.asciiz "\n"
 head:	        .asciiz "|---Bebida---|--Costo---|---Codigo---|---Cantidad--|\n"
 fila1:          .asciiz "|Agua        |  $0.50   |      1     |      "
@@ -74,6 +71,8 @@ lw $s3,cocacolaCant
 lw $s4,spriteCant
 lw $s5,fantaCant
 lw $s6,gatoCant
+lw $s7,bajostock
+
 
 main:
 	#cargar stock
@@ -139,7 +138,7 @@ main:
 	la $a0,footer
 	syscall
 	#-----Termina tabla-----
-
+		
 	#Empieza programa
 whileStart:
 	la $a0, dinero	            #imprime: 'Escriba '1' para ingresar dinero o '0' para salir:'
@@ -158,7 +157,7 @@ verificarDinero:
 	syscall
 	li $v0, 5	    			#lee el entero (billetes) por consola
 	syscall
-	move $s1, $v0	    		#muevo el valor a $s1
+	move $s1, $v0	    			#muevo el valor a $s1
 	jal validarbillete 			#se llama a funcion validar billete
 
 verificarMoneda:
@@ -171,19 +170,19 @@ verificarMoneda:
 	
 	mtc1 $s1, $f1				#conversion del entero (billete) al float
 	cvt.s.w $f1,$f1				#conversion del entero (billete) al float adjunto ref: https://youtu.be/P_drmvt_s1Q
-	li $t1,0					# t1 = 0
+	li $t1,0				# t1 = 0
 	mtc1 $t1, $f3				#conversion del entero CERO al float
 	cvt.s.w $f3,$f3				#conversion del entero CERO al float adjunto ref: https://youtu.be/P_drmvt_s1Q
 	c.eq.s $f2,$f3				#compara el valor del "cambio $f2" con el 0
-	bc1t first					#si es igual a 0, salta al loop first, solo se hara la primera vez que se ejecuta el programa
+	bc1t first				#si es igual a 0, salta al loop first, solo se hara la primera vez que se ejecuta el programa
 	add.s $f2,$f2,$f0			# el valor del cambio "f2" se sumara con el valor del billete
 	add.s $f2,$f2,$f1			# el valor del cambio "f2" se sumara con el valor de la moneda
 	j cambioaumentado			# salta al loop cambio aumentado  = se suma el valor nuevo con el cambio de la anterior compra
-								#ay dioh, ojala me entiendas gio gio:C ref:https://people.cs.pitt.edu/~sab104/teaching/cs447/labs/SlidesLab8.pdf
-first:	add.s $f2,$f0,$f1		#se suma las monedas y el billete para operaciones posteriores
+						#ay dioh, ojala me entiendas gio gio:C ref:https://people.cs.pitt.edu/~sab104/teaching/cs447/labs/SlidesLab8.pdf
+first:	add.s $f2,$f0,$f1			#se suma las monedas y el billete para operaciones posteriores
 cambioaumentado:	
 	li $v0,4
-	la $a0,dineroingresado		#imprime por pantalla el monto que se ha ingresado
+	la $a0,dineroingresado			#imprime por pantalla el monto que se ha ingresado
 	syscall
 	li $v0,2
 	mov.s $f12,$f2				#se imprime el valor flotante
@@ -206,7 +205,7 @@ comprobarCodigo:
 proceso:
 	move $a0,$s1		#Muevo el codigo de seleccion como argumento
 	jal imprimirBebida  #llamo a la funcion imprimirBebida
-	li $v0,4			# -LO QUE FALTABA- jeje 
+	li $v0,4
 	la $a0,nuevacompra
 	syscall
 	li $v0,5
@@ -229,12 +228,15 @@ imprimirBebida:
 	beq $t5,3,isprite   # case 3: sprite
 	beq $t5,4,ifanta    # case 4: fanta
 	beq $t5,5,igatorade # case 5: gatorade
+	
 	regresa:
 		addi $sp, $sp, 4
 		jr $ra
 
 #Funciones con bebidas
 iagua: #s2 -> stock de agua
+	#-----STOCK: Verifica si el stock es igual al minimo permitido
+	beq $s2,$s7,bajostockAgua
 	li $v0, 4
 	la $a0,sel       #Imprime 'seleccionaste Agua'
 	syscall
@@ -257,6 +259,7 @@ iagua: #s2 -> stock de agua
 
 
 icocacola: #$s3 -> stock de cocaCola
+	beq $s3,$s7,bajostockCoca
 	li $v0, 4
 	la $a0,sel   #Imprime 'seleccionaste coca cola'
 	syscall
@@ -277,6 +280,7 @@ icocacola: #$s3 -> stock de cocaCola
 	j regresa
 
 isprite: #$s4 -> stock de sprite
+	beq $s4,$s7,bajostockCoca
 	li $v0, 4
 	la $a0,sel   #Imprime 'seleccionaste sprite'
 	syscall
@@ -298,6 +302,8 @@ isprite: #$s4 -> stock de sprite
 	j regresa
 
 ifanta: #s5 -> stock de fanta
+	beq $s5,$s7,bajostockFanta
+	
 	li $v0, 4
 	la $a0,sel   #Imprime 'seleccionaste fanta'
 	syscall
@@ -319,6 +325,8 @@ ifanta: #s5 -> stock de fanta
 	j regresa
 
 igatorade: #s6 -> stock de gatorade
+	beq $s6,$s7,bajostockGato
+	
 	li $v0, 4
 	la $a0,sel   #Imprime 'seleccionaste gatorade'
 	syscall
@@ -337,6 +345,47 @@ igatorade: #s6 -> stock de gatorade
 	mov.s $f12,$f2				#se imprime el valor flotante
 	syscall
 	j regresa
+
+
+bajostockAgua:
+	li $v0,4
+	la $a0,nostock
+	syscall 
+	la $a0,agua
+	syscall
+	j salida
+
+bajostockCoca:
+	li $v0,4
+	la $a0,nostock
+	syscall 
+	la $a0,cocacola
+	syscall
+	j salida
+
+bajostockSprite:
+	li $v0,4
+	la $a0,nostock
+	syscall 
+	la $a0,sprite
+	syscall
+	j salida
+
+bajostockFanta:
+	li $v0,4
+	la $a0,nostock
+	syscall 
+	la $a0,fanta
+	syscall
+	j salida
+
+bajostockGato:
+	li $v0,4
+	la $a0,nostock
+	syscall 
+	la $a0,gatorade
+	syscall
+	j salida
 
 #Funciones
 validarbillete:
@@ -362,7 +411,6 @@ valb:
 
 volver:
 	jr $ra
-
 
 
 validarmoneda:
@@ -404,7 +452,6 @@ valm:
 
 volvermoneda:
 	jr $ra
-
 
 
 #Mensajes de error
@@ -451,3 +498,4 @@ cancelarCompra:
 	la $a0,salto_linea
 	syscall
 	j salida
+	
