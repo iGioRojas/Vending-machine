@@ -1,6 +1,6 @@
 .data
 
-#AUN FALTA LA NOTIFICACION DEL BAJO STOCK. PERO YA SE RESTA CORRECTAMENTE, 
+#AUN FALTA LA NOTIFICACION DEL BAJO STOCK. PERO YA SE RESTA CORRECTAMENTE, SE VALIDAN MONEDAS:D 
 #Y SE SUMA EL CAMBIO CON EL DINERO INGRESADO (NUEVO) CUANDO EL USUARIO DECIDE SEGUIR CON LA COMPRA.
 
 titulo:         .asciiz "\n******** Maquina expendedora de bebidas ******** \n\n"
@@ -364,31 +364,45 @@ volver:
 	jr $ra
 
 
+
 validarmoneda:
-#	move $t1,$v0
-#	beq $t1,$0,error2
-#	lw $t2, cincoMoneda
-#	bne $t1,$t2,moneda10
-#	j  valm
-#moneda10:
-#	lw $t3, diezMoneda
-#	bne $t1,$t3,moneda25
-#	j valm
-#moneda25:
-#	lw $t4, veinticinco
-#	bne $t1,$t4,moneda50
-#	j valm
-#moneda50:
-#	lw $t5, cincuenta
-#	bne $t1,$t5,moneda100
-#	j valm
-#moneda100:
-#	lw $t6, dolarMoneda
-#	bne $t1,$t6, error2
-#valm:
-	li $v0,4
-	la $a0,verificado
+	li $t2,0				# t1 = 0
+	mtc1 $t2, $f3				#conversion del entero CERO al float
+	cvt.s.w $f3,$f3				#conversion del entero CERO al float adjunto ref: https://youtu.be/P_drmvt_s1Q
+	c.eq.s $f0,$f3
+	bc1t error2
+	
+	l.s $f4,cincoMoneda
+	c.eq.s $f0,$f4
+	bc1f moneda10
+	j valm
+moneda10: 
+	l.s $f5,diezMoneda
+	c.eq.s $f0,$f5
+	bc1f moneda25
+	j valm
+moneda25:
+	l.s $f6,veinticinco
+	c.eq.s $f0,$f6
+	bc1f moneda50
+	j valm
+moneda50:	
+	l.s $f7,cincuenta
+	c.eq.s $f0,$f7
+	bc1f moneda100
+	j valm
+moneda100:
+	l.s $f8,dolarMoneda
+	c.eq.s $f0,$f8
+	bc1f error2
+
+valm:
+	li $v0, 4
+	la $a0, verificado
 	syscall
+	jr $ra
+
+volvermoneda:
 	jr $ra
 
 
