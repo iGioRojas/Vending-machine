@@ -1,17 +1,20 @@
 .data
 
+#AUN FALTA LA NOTIFICACION DEL BAJO STOCK. PERO YA SE RESTA CORRECTAMENTE, 
+#Y SE SUMA EL CAMBIO CON EL DINERO INGRESADO (NUEVO) CUANDO EL USUARIO DECIDE SEGUIR CON LA COMPRA.
+
 titulo:         .asciiz "\n******** Maquina expendedora de bebidas ******** \n\n"
-bebida:		    .asciiz "\n\nIngrese el codigo de la bebida o '0' para cancelar: "
+bebida:		.asciiz "\n\nIngrese el codigo de la bebida o '0' para cancelar: "
 sel:            .asciiz "Seleccionaste  "
 dineroingresado:.asciiz	"\nEl dinero ingresado para la compra es de: $"
 cancelar:       .asciiz "\n--Has cancelado la compra, dinero devuelto ---> $"
 cambio:         .asciiz "Su cambio es: "
-verificado:	    .asciiz "El monto ingresado es el correcto!\n"   
-procesado:	    .asciiz "Se proceso su compra, disfruta tu bebida ^-^\n" 
-dinero:		    .asciiz "Escriba '1' para ingresar dinero o '0' para salir:"
-dinero1:	    .asciiz "\nIngrese billetes o '0' para continuar: "
-dinero2:	    .asciiz "\nIngrese monedas o '0' para continuar: "
-nuevacompra:	.asciiz "\nSi desea seguir comprando digite '1', para salir digite '0':"
+verificado:	.asciiz "El monto ingresado es el correcto!\n"   
+procesado:	.asciiz "Se proceso su compra, disfruta tu bebida ^-^\n" 
+dinero:		.asciiz "\nEscriba '1' para ingresar dinero o '0' para salir:"
+dinero1:	.asciiz "\nIngrese billetes o '0' para continuar: "
+dinero2:	.asciiz "\nIngrese monedas o '0' para continuar: "
+nuevacompra:	.asciiz "\n\nSi desea seguir comprando digite '1', para salir digite '0':"
 nuevacompra2:	.asciiz "\n****** Nueeeeeva Compraaaaa ****** \n\n"
 nostock:        .asciiz "Lo sentimos, la bebida esta agotada"
 salto_linea: 	.asciiz "\n"
@@ -20,20 +23,20 @@ fila1:          .asciiz "|Agua        |  $0.50   |      1     |      "
 fila2:          .asciiz "|Coca Cola   |  $1.00   |      2     |      "
 fila3:	        .asciiz "|Sprite      |  $1.00   |      3     |      "
 fila4:          .asciiz "|Fanta       |  $0.50   |      4     |      "
-fila5:    	    .asciiz "|Gatorade    |  $1.00   |      5     |      "
-fila6:    	    .asciiz "\n|Salir       |   ----   |      0     |      -"
+fila5:    	.asciiz "|Gatorade    |  $1.00   |      5     |      "
+fila6:    	.asciiz "\n|Salir       |   ----   |      0     |      -"
 finFila:        .asciiz "      |\n"
-footer:     	.asciiz "______________________________________\n\n"
+footer:     	.asciiz "______________________________________\n"
 mensajeSalida:	.asciiz "\n\n****Gracias por su compra...****\n"
-error:		    .asciiz "\n\n****El codigo ingresado no existe, intente de nuevo...\n"
+error:		.asciiz "\n\n****El codigo ingresado no existe, intente de nuevo...\n"
 errorDinero:	.asciiz "\n\n****El monto ingresado no existe, intente de nuevo...\n"
-errorNumero:     .asciiz "\n[ERROR] ---> Solo se acepta el valor de '1' y '0', intente de nuevo...\n"
+errorNumero:    .asciiz "\n[ERROR] ---> Solo se acepta el valor de '1' y '0', intente de nuevo...\n"
 
 # Bebidas en la maquina expendedora
 agua:           .asciiz "Agua\n"
 cocacola:       .asciiz "Coca Cola\n"
 sprite:         .asciiz "Sprite\n"
-fanta:		    .asciiz "Fanta\n"
+fanta:		.asciiz "Fanta\n"
 gatorade:       .asciiz "Gatorade\n"
 
 # Precio de bebidas
@@ -50,12 +53,12 @@ spriteCant:     .word 8
 fantaCant:      .word 8
 gatoCant:       .word 8
 
-bajostock:	    .word 2
+bajostock:	.word 2
 
 #Billetes
-uno:			.word 1
-cinco:			.word 5
-diez:			.word 10
+uno:		.word 1
+cinco:		.word 5
+diez:		.word 10
 
 #Monedas
 cincoMoneda:    .float 0.05
@@ -132,6 +135,7 @@ main:
 	syscall
 	la $a0, finFila
 	syscall
+	
 	la $a0,footer
 	syscall
 	#-----Termina tabla-----
@@ -163,12 +167,21 @@ verificarMoneda:
 	syscall
 	li $v0,6	    			#lee float (monedas) por consola
 	syscall
-	jal validarmoneda			#se llama a funcion validar moneda
-
-	mtc1 $s1, $f1				#conversion del entero al float
-	cvt.s.w $f2,$f1				#conversion del entero al float adjunto ref: https://youtu.be/P_drmvt_s1Q
-	add.s $f2,$f0,$f2			#se suma las monedas y el billete para operaciones posteriores
-	#beq $t2,$zero,error2		#si el dinero ingresado es igual a 0 va a error
+	jal validarmoneda
+	
+	mtc1 $s1, $f1				#conversion del entero (billete) al float
+	cvt.s.w $f1,$f1				#conversion del entero (billete) al float adjunto ref: https://youtu.be/P_drmvt_s1Q
+	li $t1,0					# t1 = 0
+	mtc1 $t1, $f3				#conversion del entero CERO al float
+	cvt.s.w $f3,$f3				#conversion del entero CERO al float adjunto ref: https://youtu.be/P_drmvt_s1Q
+	c.eq.s $f2,$f3				#compara el valor del "cambio $f2" con el 0
+	bc1t first					#si es igual a 0, salta al loop first, solo se hara la primera vez que se ejecuta el programa
+	add.s $f2,$f2,$f0			# el valor del cambio "f2" se sumara con el valor del billete
+	add.s $f2,$f2,$f1			# el valor del cambio "f2" se sumara con el valor de la moneda
+	j cambioaumentado			# salta al loop cambio aumentado  = se suma el valor nuevo con el cambio de la anterior compra
+								#ay dioh, ojala me entiendas gio gio:C ref:https://people.cs.pitt.edu/~sab104/teaching/cs447/labs/SlidesLab8.pdf
+first:	add.s $f2,$f0,$f1		#se suma las monedas y el billete para operaciones posteriores
+cambioaumentado:	
 	li $v0,4
 	la $a0,dineroingresado		#imprime por pantalla el monto que se ha ingresado
 	syscall
@@ -184,7 +197,7 @@ comprobarCodigo:
 	li   $v0, 5	    	    	#lee entero (código de bebida) por consola
 	syscall
 	move $s1, $v0	        	#muevo el valor a $s1
-	beq  $s1, 0, cancelarCompra #si el valor del codigo es 0 entonce se va a salida
+	beq  $s1, 0, cancelarCompra 	#si el valor del codigo es 0 entonce se va a salida
 	slti $t0, $s1, 6    		#si no es = a 0, entonces se hace la condicion que valor de usuario menor a 6
 	beq  $t0, 0, error1	    	#si el valor es mayor a 0 va a error
 
@@ -193,19 +206,17 @@ comprobarCodigo:
 proceso:
 	move $a0,$s1		#Muevo el codigo de seleccion como argumento
 	jal imprimirBebida  #llamo a la funcion imprimirBebida
-
+	li $v0,4			# -LO QUE FALTABA- jeje 
 	la $a0,nuevacompra
 	syscall
-
 	li $v0,5
 	syscall
-
 	move $t2,$v0
 	beq $t2,0,salida
 	li $v0,4
 	la $a0,nuevacompra2
 	syscall
-
+	
 	j main
 
 imprimirBebida:			
@@ -258,11 +269,11 @@ icocacola: #$s3 -> stock de cocaCola
 
 	la $a0, cambio
 	syscall
-	# l.s $f0, precioCocacola
-	# sub.s $f2,$f2,$f0
-	# li $v0,2
-	# mov.s $f12,$f2				#se imprime el valor flotante
-	# syscall
+	l.s $f0, precioCocacola
+	sub.s $f2,$f2,$f0
+	li $v0,2
+	mov.s $f12,$f2				#se imprime el valor flotante
+	syscall
 	j regresa
 
 isprite: #$s4 -> stock de sprite
@@ -279,11 +290,11 @@ isprite: #$s4 -> stock de sprite
 
 	la $a0, cambio
 	syscall
-	# l.s $f0, precioSprite
-	# sub.s $f2,$f2,$f0
-	# li $v0,2
-	# mov.s $f12,$f2				#se imprime el valor flotante
-	# syscall
+	l.s $f0, precioSprite
+	sub.s $f2,$f2,$f0
+	li $v0,2
+	mov.s $f12,$f2				#se imprime el valor flotante
+	syscall
 	j regresa
 
 ifanta: #s5 -> stock de fanta
@@ -300,11 +311,11 @@ ifanta: #s5 -> stock de fanta
 
 	la $a0, cambio
 	syscall
-	# l.s $f0, precioFanta
-	# sub.s $f2,$f2,$f0
-	# li $v0,2
-	# mov.s $f12,$f2				#se imprime el valor flotante
-	# syscall
+	l.s $f0, precioFanta
+	sub.s $f2,$f2,$f0
+	li $v0,2
+	mov.s $f12,$f2				#se imprime el valor flotante
+	syscall
 	j regresa
 
 igatorade: #s6 -> stock de gatorade
@@ -320,11 +331,11 @@ igatorade: #s6 -> stock de gatorade
 
 	la $a0, cambio
 	syscall
-	# l.s $f0, precioGatorade
-	# sub.s $f2,$f2,$f0
-	# li $v0,2
-	# mov.s $f12,$f2				#se imprime el valor flotante
-	# syscall
+	l.s $f0, precioGatorade
+	sub.s $f2,$f2,$f0
+	li $v0,2
+	mov.s $f12,$f2				#se imprime el valor flotante
+	syscall
 	j regresa
 
 #Funciones
@@ -425,5 +436,4 @@ cancelarCompra:
 	li $v0, 4
 	la $a0,salto_linea
 	syscall
-	j main
-
+	j salida
